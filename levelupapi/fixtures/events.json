@@ -1,0 +1,26 @@
+[
+    {
+        "model": "levelupapi.event",
+        "pk": 1,
+        "fields": {
+            "game": 1,
+            "description": "Clue Party",
+            "date": "2022-08-02",
+            "time": "6:00",
+            "organizer": 1,
+            "attendees": []
+        }
+    },
+    {
+        "model": "levelupapi.event",
+        "pk": 2,
+        "fields": {
+            "game": 2,
+            "description":"Monopoly Madness",
+            "date": "2022-08-02",
+            "time": "9:00",
+            "organizer": 1,
+            "attendees": []
+        }
+    }
+]
