@@ -3,9 +3,11 @@ from django.http import HttpResponseServerError
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework import serializers, status
+from levelupapi.models import gamer
 from levelupapi.models.event import Event
 from levelupapi.models.game import Game
 from levelupapi.models.gamer import Gamer
+from rest_framework.decorators import action
 
 
 class EventView(ViewSet):
@@ -35,6 +37,13 @@ class EventView(ViewSet):
         event_game = request.query_params.get('game', None)
         if event_game is not None:
             events = events.filter(game_id=event_game)
+        gamer = Gamer.objects.get(user=request.auth.user)
+        # Set the `joined` property on every event
+        for event in events:
+        # Check to see if the gamer is in the attendees list on the event
+            event.joined = gamer in event.attendees.all()
+
+               
 
         serializer = EventSerializer(events, many=True)
         return Response(serializer.data)
@@ -84,11 +93,44 @@ class EventView(ViewSet):
         return Response(None, status=status.HTTP_204_NO_CONTENT)
 
 
+# Using the action decorator turns a method into a new route.
+# In this case, the action will accept POST methods and because
+# detail=True the url will include the pk. Since we need to know which
+# event the user wants to sign up for we’ll need to have the pk. The route
+# is named after the function. So to call this method the url would be
+# http://localhost:8000/events/2/signup
+
+# Just like in the create method, we get the gamer that’s logged in,
+# then the event by it’s pk. The ManyToManyField , attendees, on the
+# Event model takes care of most of the hard work. The add method on
+# attendees creates the relationship between this event and gamer by
+# adding the event_id and gamer_id to the join table. The response then
+# sends back a 201 status code.
+
+
+    @action(methods=['post'], detail=True)
+    def signup(self, request, pk):
+        """Post request for a user to sign up for an event"""
+
+        gamer = Gamer.objects.get(user=request.auth.user)
+        event = Event.objects.get(pk=pk)
+        event.attendees.add(gamer)
+        return Response({'message': 'Gamer added'}, status=status.HTTP_201_CREATED)
+
+    @action(methods=['delete'], detail=True)
+    def leave(self, request, pk):
+        """Delete request for a user to leave an event"""
+        gamer = Gamer.objects.get(user=request.auth.user)
+        event = Event.objects.get(pk=pk)
+        event.attendees.remove(gamer)
+        return Response({'message': 'Gamer Left Event'}, status=status.HTTP_204_NO_CONTENT)
+
+
 class EventSerializer(serializers.ModelSerializer):
     """JSON serializer for game types
     """
     class Meta:
         model = Event
         fields = ('id', 'game', 'description', 'date',
-                  'time', 'organizer', 'attendees')
+                  'time', 'organizer', 'attendees', 'joined')
         depth = 2
